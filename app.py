@@ -67,18 +67,31 @@ if st.button("Add Task"):
         frequency=frequency,
         time=task_time.strftime("%H:%M") if task_time else "00:00",
     )
-    # Add task to the owner's first pet if one exists
     if st.session_state.owner and st.session_state.owner.pets:
         st.session_state.owner.pets[0].add_task(task)
     st.session_state.tasks.append(task)
-    st.success(f"Added task: {task.name}")
+    st.success(f"Added: **{task.name}** at {task.time} ({task.duration} min)")
 
+# --- Current tasks: sorted by time via Scheduler ---
 if st.session_state.tasks:
-    st.write("Current tasks:")
+    # Use a temporary Scheduler just to get the sorted order
+    _scheduler = Scheduler(
+        tasks=st.session_state.tasks,
+        owner=st.session_state.owner or Owner(name="", available_time=0),
+    )
+    sorted_tasks = _scheduler.sort_by_time()
+
+    PRIORITY_LABEL = {1: "⬇ Low", 2: "↙ Low-Med", 3: "➡ Medium", 4: "↗ High-Med", 5: "⬆ High"}
+
+    st.write("Current tasks (sorted by scheduled time):")
     st.table([{
-        "id": t.id, "name": t.name, "time": t.time, "duration": t.duration,
-        "priority": t.priority, "category": t.category, "frequency": t.frequency
-    } for t in st.session_state.tasks])
+        "Time": t.time,
+        "Task": t.name,
+        "Category": t.category,
+        "Duration (min)": t.duration,
+        "Priority": PRIORITY_LABEL.get(t.priority, str(t.priority)),
+        "Frequency": t.frequency,
+    } for t in sorted_tasks])
 else:
     st.info("No tasks yet. Add one above.")
 
@@ -96,16 +109,52 @@ if st.button("Generate Schedule"):
         owner = st.session_state.owner
         scheduler = Scheduler(tasks=st.session_state.tasks, owner=owner)
 
+        # --- Conflict warnings ---
         conflicts = scheduler.detect_conflicts()
-        for warning in conflicts:
-            st.warning(warning)
+        if conflicts:
+            st.error(
+                f"⚠️ **{len(conflicts)} scheduling conflict{'s' if len(conflicts) > 1 else ''} found** — "
+                "two or more tasks are booked at the same time. "
+                "Review the conflicts below and edit a task's scheduled time before continuing."
+            )
+            for warning in conflicts:
+                # warning format: "WARNING: 'A' and 'B' are both scheduled at HH:MM."
+                st.warning(f"🕐 {warning}  \n*Tip: go back and change the scheduled time for one of these tasks.*")
+            st.stop()
+        else:
+            st.success("No scheduling conflicts found.")
 
+        # --- Generate and display plan ---
         schedule = scheduler.generate_plan(available_time=owner.available_time)
 
         if schedule and schedule.list_of_tasks:
-            st.success("Schedule generated!")
-            for task in schedule.list_of_tasks:
-                st.markdown(f"- **[{task.category}]** {task.name} — {task.duration} min (priority {task.priority}, {task.frequency})")
-            st.markdown(f"**Total scheduled:** {schedule.total_time} min | **Unused:** {schedule.unused_time} min")
+            st.success(f"Schedule generated for **{owner.name}**!")
+
+            # Sort scheduled tasks by time for display
+            scheduled_sorted = sorted(schedule.list_of_tasks, key=lambda t: t.time)
+            PRIORITY_LABEL = {1: "⬇ Low", 2: "↙ Low-Med", 3: "➡ Medium", 4: "↗ High-Med", 5: "⬆ High"}
+
+            st.table([{
+                "Time": t.time,
+                "Task": t.name,
+                "Category": t.category,
+                "Duration (min)": t.duration,
+                "Priority": PRIORITY_LABEL.get(t.priority, str(t.priority)),
+                "Frequency": t.frequency,
+            } for t in scheduled_sorted])
+
+            # Time summary metrics
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Available time", f"{owner.available_time} min")
+            col2.metric("Scheduled", f"{schedule.total_time} min")
+            col3.metric("Unused", f"{schedule.unused_time} min")
+
+            # Show skipped tasks if any didn't fit
+            scheduled_ids = {t.id for t in schedule.list_of_tasks}
+            skipped = [t for t in st.session_state.tasks if t.id not in scheduled_ids]
+            if skipped:
+                with st.expander(f"⏭ {len(skipped)} task(s) skipped (didn't fit in available time)"):
+                    for t in skipped:
+                        st.markdown(f"- **{t.name}** — {t.duration} min (priority {t.priority})")
         else:
-            st.warning("Scheduler returned an empty plan. Implement generate_plan() in pawpal_system.py to populate it.")
+            st.warning("No tasks fit in the available time. Try increasing available time or reducing task durations.")

@@ -42,6 +42,22 @@ pip install -r requirements.txt
 6. Connect your logic to the Streamlit UI in `app.py`.
 7. Refine UML so it matches what you actually built.
 
+## Features
+
+- **Chronological task sorting** — `Scheduler.sort_by_time()` sorts all tasks by their `HH:MM` scheduled time using Python's built-in `sorted()` with a string key. Tasks are always displayed in the order they happen during the day, both in the task list and the generated schedule.
+
+- **Priority-based greedy plan generation** — `Scheduler.generate_plan()` iterates through tasks in descending priority order and greedily adds each task to the schedule only if its duration fits within the owner's remaining available time. Higher-priority tasks are always considered first; lower-priority tasks fill leftover minutes.
+
+- **Time conflict detection** — `Scheduler.detect_conflicts()` scans all tasks using a dictionary keyed by `HH:MM` time. If two tasks share the same scheduled time, a warning string is appended to the results. In the UI, conflicts block schedule generation entirely — the owner must resolve them before a plan is produced.
+
+- **Daily and weekly recurrence** — `Task.mark_complete()` marks the current task done and returns a new `Task` instance with an incremented `due_date`: +1 day for `Daily` tasks (`timedelta(days=1)`), +7 days for `Weekly` tasks (`timedelta(weeks=1)`). One-time tasks return `None`.
+
+- **Skipped task transparency** — After plan generation, any task that was excluded because it exceeded the remaining time budget is listed in a collapsible expander, so the owner knows exactly what didn't make the cut and why.
+
+## 📸 Demo
+
+<a href="/course_images/ai110/uml_final.png" target="_blank"><img src='/course_images/ai110/uml_final.png' title='PawPal App' width='' alt='PawPal App' class='center-block' /></a>
+
 ## Smarter Scheduling
 
 The scheduler was extended with three features beyond basic task listing:
