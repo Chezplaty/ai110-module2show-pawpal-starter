@@ -51,3 +51,31 @@ The scheduler was extended with three features beyond basic task listing:
 - **Time conflict detection** — `detect_conflicts()` scans all tasks for collisions using a dictionary keyed by `HH:MM` time. If two tasks are scheduled at the same time, a warning message is returned instead of crashing. Conflicts are surfaced in both the terminal and the Streamlit UI before the schedule is displayed.
 
 - **Automatic recurrence** — `mark_complete()` returns a new `Task` instance with an updated `due_date` when a recurring task is finished. Daily tasks roll forward by 1 day (`timedelta(days=1)`), weekly tasks by 7 days (`timedelta(weeks=1)`). One-time tasks return `None`.
+
+## Testing PawPal+
+
+### How to run the tests
+
+```bash
+python -m pytest tests/test_pawpal.py -v
+```
+
+Run from the `ai110-module2show-pawpal-starter/` directory. The `-v` flag shows each test name and its pass/fail result.
+
+### What the tests cover
+
+The suite contains **21 tests** across five areas:
+
+| Area | What is verified |
+|------|-----------------|
+| **Sorting** | `sort_by_time()` returns tasks in `HH:MM` ascending order, handles single-task and empty lists, and never drops or duplicates tasks. |
+| **Recurrence** | `mark_complete()` on a `Daily` task returns a new task due tomorrow; `Weekly` adds 7 days; `Once` returns `None`. The clone preserves all original fields and the original task is marked done. |
+| **Conflict detection** | `detect_conflicts()` flags two tasks at the same time with one warning, produces no warnings when times differ, handles three-way conflicts, and includes task names in the warning text. |
+| **Plan generation** | `generate_plan()` never exceeds available time, always picks the highest-priority task first when time is tight, returns an empty schedule when there are no tasks, and excludes any single task that is too long to fit. |
+| **Pet edge cases** | A new `Pet` starts with an empty task list; adding the first task works correctly. |
+
+### Confidence Level
+
+**4 / 5 stars**
+
+The three core scheduling behaviors — sorting, recurrence, and conflict detection — are fully implemented and all 21 tests pass. The rating is not 5 stars because several methods (`get_profile`, `update_preferences`, `add_task` on `Schedule`, `display_plan`, `explain_plan`) are still stubs (`pass`) and have no test coverage yet. Reliability of the full app depends on those being implemented and tested.
