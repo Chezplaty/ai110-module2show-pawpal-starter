@@ -41,3 +41,13 @@ pip install -r requirements.txt
 5. Add tests to verify key behaviors.
 6. Connect your logic to the Streamlit UI in `app.py`.
 7. Refine UML so it matches what you actually built.
+
+## Smarter Scheduling
+
+The scheduler was extended with three features beyond basic task listing:
+
+- **Priority-based plan generation** — `generate_plan()` sorts tasks by priority (1–5) in descending order and greedily fills the owner's available time, skipping any task whose duration no longer fits. Higher-priority tasks are always scheduled first.
+
+- **Time conflict detection** — `detect_conflicts()` scans all tasks for collisions using a dictionary keyed by `HH:MM` time. If two tasks are scheduled at the same time, a warning message is returned instead of crashing. Conflicts are surfaced in both the terminal and the Streamlit UI before the schedule is displayed.
+
+- **Automatic recurrence** — `mark_complete()` returns a new `Task` instance with an updated `due_date` when a recurring task is finished. Daily tasks roll forward by 1 day (`timedelta(days=1)`), weekly tasks by 7 days (`timedelta(weeks=1)`). One-time tasks return `None`.
